@@ -9,33 +9,34 @@ from os import remove
 ###########################################
 # UUID Generator
 ###########################################
-from random import randint
+from random import choice
+from string import ascii_letters, digits
 
-alphabet = "abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 def uuid_char():
-	# Get a random character in the alphabet string.
-	return alphabet[randint(0, len(alphabet)-1)]
+	""" Get a random character in the alphabet string."""
+	return choice(ascii_letters + digits)
 
-def make_uuid(length=16):
-	# Join a bunch of characters of the length variable length.
-	# Those characters are called individually from the method "uuid_char"
-	return "".join([uuid_char() for x in range(length)])
+def make_uuid(length = 16):
+	""" Join a bunch of characters of the length variable length.
+		Those characters are called individually from the method "uuid_char"
+	"""
+	return ''.join([uuid_char() for _ in range(length)])
 
 ###########################################
 # Loading variables
 ###########################################
-import os
+from os import getenv
 from dotenv import load_dotenv
 
 load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-PREFIX = os.getenv("PREFIX")
+DISCORD_TOKEN = getenv("DISCORD_TOKEN")
+PREFIX = getenv("PREFIX")
 
 ###########################################
 # Initialising discord bot
 ###########################################
-import discord
+from discord import File
 from discord.ext import commands
 
 bot = commands.Bot(command_prefix = PREFIX)
@@ -63,26 +64,28 @@ async def who(ctx):
 		if not attachment.filename.lower().split(".")[-1] in image_types:
 			continue
 
-		extension = "."+attachment.filename.split(".")[-1]
-		uuid = make_uuid()
+		extension = f".{attachment.filename.split('.')[-1]}"
 
-		filesToUUID[attachment.filename] = uuid+extension
+		filesToUUID[attachment.filename] = make_uuid() + extension
 		await attachment.save(f"temporary-images/{uuid}{extension}")
 
 	# Iterating through attachments and saying who it looks like
-	for file in filesToUUID.keys():
-		name = lookup("temporary-images/" + filesToUUID[file])
+	for file in filesToUUID:
+		name = lookup(f"temporary-images/{filesToUUID[file]}")
 
-		if name == None:
+		if not name:
 			await ctx.reply("No faces in image.")
 		elif name == ">1":
 			await ctx.reply("More than 1 face in image.")
 		else:
-			face_file = discord.File("faces/"+name+".jpg")
-			await ctx.reply("The picture you sent (apparently) looks like " + name, file=face_file)
+			face_file = File(f"faces/{name}.jpg")
+			await ctx.reply(
+				f"The picture you sent (apparently) looks like {name}",
+				file = face_file
+			)
 		
 		# Delete the attachment after I'm finished with it.
-		remove("temporary-images/" + filesToUUID[file])
+		remove(f"temporary-images/{filesToUUID[file]}")
 
 ###########################################
 # Inserting token
